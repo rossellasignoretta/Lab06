@@ -1,5 +1,7 @@
 package it.polito.tdp.meteo.bean;
 
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 public class Citta {
@@ -75,4 +77,16 @@ public class Citta {
 		return nome;
 	}
 	
+	
+	
+	public Rilevamento getRilevamento(int giorno){
+		for(Rilevamento r: rilevamenti){
+			Calendar calendar= new GregorianCalendar();
+			calendar.setTime(r.getData());
+			if(calendar.get(Calendar.DAY_OF_MONTH)==giorno){
+				return r;
+			}
+		}
+		return null;
+	}
 }
