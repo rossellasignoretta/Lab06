@@ -9,28 +9,31 @@ import it.polito.tdp.meteo.db.MeteoDAO;
 
 public class Model {
 
-	private final static int COST = 50;
+	private final static int COST = 100;
 	private final static int NUMERO_GIORNI_CITTA_CONSECUTIVI_MIN = 3;
 	private final static int NUMERO_GIORNI_CITTA_MAX = 6;
 	private final static int NUMERO_GIORNI_TOTALI = 15;
 
 	List<Citta> citta;
+	MeteoDAO dao= null;
+	
+	
+	List<SimpleCity> best;
+	private double punteggioMiglioreSoluzione;
 	
 	public Model() {
-
+		
 	}
 
 	public String getUmiditaMedia(int mese) {
 		String risultato="UMIDITA' MEDIA NEL MESE SELEZIONATO\n";
 		
-		MeteoDAO dao=new MeteoDAO();
-		Double UmiditaTorino=dao.getAvgRilevamentiLocalitaMese(mese, "Torino");
-		Double UmiditaMilano=dao.getAvgRilevamentiLocalitaMese(mese,"Milano");
-		Double UmiditaGenova=dao.getAvgRilevamentiLocalitaMese(mese,"Genova");
+		dao=new MeteoDAO();
 		
-		risultato+="Torino "+UmiditaTorino+"\n";
-		risultato+="Milano "+UmiditaMilano+"\n";
-		risultato+="Genova "+UmiditaGenova;
+		for (String s : dao.getCities()){
+			risultato+=s+" "+dao.getAvgRilevamentiLocalitaMese(mese, s)+"\n";
+
+		}
 		
 		return risultato;
 	}
@@ -38,20 +41,18 @@ public class Model {
 	public String trovaSequenza(int mese) {
 		String risultato="SEQUENZA OTTIMALE\n";
 		
-		MeteoDAO dao= new MeteoDAO();
-		Citta Torino= new Citta("Torino",dao.getAllRilevamentiLocalitaMese(mese, "Torino"));
-		Citta Milano= new Citta("Milano",dao.getAllRilevamentiLocalitaMese(mese, "Milano"));
-		Citta Genova= new Citta("Genova",dao.getAllRilevamentiLocalitaMese(mese, "Genova"));
-		
+		dao= new MeteoDAO();
 		citta=new ArrayList<Citta>();
-		citta.add(Torino);
-		citta.add(Milano);
-		citta.add(Genova);
+		
+		for (String s : dao.getCities())
+			citta.add(new Citta(s, dao.getAllRilevamentiLocalitaMese(mese, s)));
 		
 		List<SimpleCity> parziale= new ArrayList<SimpleCity>();
-		List<SimpleCity> best= new ArrayList<SimpleCity>();
 
-		recursive(parziale, best, 1);
+		best= new ArrayList<SimpleCity>();
+		punteggioMiglioreSoluzione = Double.MAX_VALUE;
+
+		recursive(parziale, 0);
 		
 		for(SimpleCity stemp: best){
 			risultato+=stemp.toString()+"\n";
@@ -65,29 +66,33 @@ public class Model {
 	 * @param best
 	 * @param livello
 	 */
-	private void recursive(List<SimpleCity> parziale, List<SimpleCity> best, int livello) {
+	private void recursive(List<SimpleCity> parziale, int livello) {
 		//CONDIZIONE DI TERMINAZIONE
-		if(parziale.size()==NUMERO_GIORNI_TOTALI){
-			if (controllaCandidata(parziale) && punteggioSoluzione(parziale)<punteggioSoluzione(best)){
+		if(livello>=NUMERO_GIORNI_TOTALI){
+			double punteggioParziale=punteggioSoluzione(parziale);
+			if (controllaCandidata(parziale) && punteggioParziale<punteggioMiglioreSoluzione){
 				best.clear();
-				best.addAll(parziale) ;
-				System.out.println(best);
+				best.addAll(parziale);
+				punteggioMiglioreSoluzione=punteggioParziale;
 				}
-			
+			return;
 		}
 		
 		for(Citta ctemp: citta){
-				Rilevamento r=ctemp.getRilevamento(livello);
-				if (r!=null){
-					int costo=r.getUmidita()*COST;
-					SimpleCity c=new SimpleCity(ctemp.getNome(), costo);
-					parziale.add(c);
+				Rilevamento r=ctemp.getRilevamenti().get(livello);
+				int costo=r.getUmidita();
+				//System.out.println(ctemp.getNome()+" "+r.getData()+" "+costo );
+				SimpleCity c=new SimpleCity(ctemp.getNome(), costo);
+					
+				parziale.add(c);
+				ctemp.increaseCounter();
 						//System.out.println(parziale.toString());
-					if(controllaParziale(parziale)){
-						recursive(parziale, best, livello+1);	
+				if(controllaParziale(parziale)){
+					recursive(parziale, livello+1);	
 					}
-					parziale.remove(c);
-				}	
+				parziale.remove(livello);
+				ctemp.decreaseCounter();
+					
 		}
 	}
 
@@ -104,7 +109,7 @@ public class Model {
 			SimpleCity a=soluzioneCandidata.get(i);
 			score+=a.getCosto();
 			if(i>0 && !a.getNome().equals(soluzioneCandidata.get(i-1).getNome())){
-				score+=100;
+				score+=COST;
 			}
 		}
 		return score;
@@ -119,13 +124,7 @@ public class Model {
 	private boolean controllaParziale(List<SimpleCity> parziale) {
 		//max 6 giorni nella stessa citta
 		for(Citta c: citta){
-			int count=0;
-			for (SimpleCity s: parziale){
-				if(s.getNome().equals(c.getNome())){
-					count++;
-				}
-			}
-			if (count>NUMERO_GIORNI_CITTA_MAX){
+			if (c.getCounter()>NUMERO_GIORNI_CITTA_MAX){
 				return false;
 			}
 		}
@@ -147,21 +146,10 @@ public class Model {
 				}
 			}
 			
-		}
-		/*int size=parziale.size();
-		if(size>1 && !parziale.get(size-1).equals(parziale.get(size-2))){
-			if(size<=3)
-				return false;
-			else if(!parziale.get(size-2).equals(parziale.get(size-3)) || !parziale.get(size-2).equals(parziale.get(size-4)))
-					return false;
-		}*/
-		
+		}	
 		
 		return true;
-		
-		
-		
-		
+				
 	}
 	/**
 	 * Verifica che tutte le citta siano presenti nella soluzione candidata
@@ -181,7 +169,6 @@ public class Model {
 		return true;
 		
 	}
-	
-	//CHE MI SERVE IL CONTATORE IN CITTA???
 
+	
 }

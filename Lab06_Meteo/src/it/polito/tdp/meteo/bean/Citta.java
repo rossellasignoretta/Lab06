@@ -47,6 +47,10 @@ public class Citta {
 		this.counter += 1;
 	}
 
+	public void decreaseCounter() {
+		this.counter -= 1;
+	}
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -79,7 +83,7 @@ public class Citta {
 	
 	
 	
-	public Rilevamento getRilevamento(int giorno){
+	/*public Rilevamento getRilevamento(int giorno){
 		for(Rilevamento r: rilevamenti){
 			Calendar calendar= new GregorianCalendar();
 			calendar.setTime(r.getData());
@@ -88,5 +92,5 @@ public class Citta {
 			}
 		}
 		return null;
-	}
+	}*/
 }

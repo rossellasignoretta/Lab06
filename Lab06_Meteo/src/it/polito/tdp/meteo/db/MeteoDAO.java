@@ -72,7 +72,7 @@ public class MeteoDAO {
 
 	public Double getAvgRilevamentiLocalitaMese(int mese, String localita) {
 		
-		final String sql = "SELECT SUM(Umidita) AS SOMMA, COUNT(*) AS NUM FROM situazione WHERE Localita=? AND MONTH(data)=?";
+		final String sql = "SELECT AVG(Umidita) AS UmiditaMedia FROM situazione WHERE Localita=? AND MONTH(data)=?";
 
 		Double risultato= 0.0;
 
@@ -86,7 +86,7 @@ public class MeteoDAO {
 			ResultSet rs = st.executeQuery();
 
 			if (rs.next()){
-				risultato=(double)rs.getInt("SOMMA")/(double)rs.getInt("NUM");
+				risultato=(double)rs.getDouble("UmiditaMedia");
 			}
 
 			conn.close();
@@ -94,6 +94,29 @@ public class MeteoDAO {
 
 		} catch (SQLException e) {
 
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+	}
+	
+	public List<String> getCities() {
+		final String sql = "SELECT DISTINCT localita FROM situazione";
+
+		try {
+			List<String> cities = new ArrayList<String>();
+
+			Connection conn = DBConnect.getInstance().getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				cities.add(rs.getString("localita"));
+			}
+
+			conn.close();
+			return cities;
+
+		} catch (SQLException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}

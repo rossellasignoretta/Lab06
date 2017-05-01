@@ -50,7 +50,6 @@ public class MeteoController {
 		}		
 		int mese=boxMese.getValue();
 		txtResult.setText(model.getUmiditaMedia(mese));
-
 	}
 
 	@FXML
